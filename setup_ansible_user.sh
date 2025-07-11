@@ -13,7 +13,7 @@ apt update && apt upgrade -y
 
 # Install required packages
 echo "Installing required packages..."
-apt install -y ansible git python3-pip sudo
+apt install -y ansible git python3-pip python3-apt python3-setuptools sudo
 
 # Create ansible user if it doesn't exist
 if ! id "ansible" &>/dev/null; then
@@ -69,7 +69,6 @@ ExecStartPost=/bin/systemctl --user daemon-reload
 StandardOutput=journal
 StandardError=journal
 PrivateTmp=yes
-NoNewPrivileges=yes
 
 [Install]
 WantedBy=multi-user.target
