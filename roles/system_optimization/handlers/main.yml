@@ -1,0 +1,12 @@
+---
+- name: restart systemd-journald
+  systemd:
+    name: systemd-journald
+    state: restarted
+    daemon_reload: yes
+
+- name: restart systemd-coredump
+  systemd:
+    name: systemd-coredump.socket
+    state: restarted
+    daemon_reload: yes

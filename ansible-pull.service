@@ -1,0 +1,18 @@
+[Unit]
+Description=Ansible Pull GitOps for Linux Mint Optimization
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ansible
+WorkingDirectory=/home/ansible
+ExecStart=/usr/bin/ansible-pull -U https://github.com/REPLACE_WITH_YOUR_USERNAME/linux-mint-optimizer.git -i inventory/hosts.yml site.yml
+ExecStartPost=/bin/systemctl --user daemon-reload
+StandardOutput=journal
+StandardError=journal
+PrivateTmp=yes
+NoNewPrivileges=yes
+
+[Install]
+WantedBy=multi-user.target

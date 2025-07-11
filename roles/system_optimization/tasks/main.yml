@@ -1,0 +1,58 @@
+---
+- name: Configure systemd journal vacuum size
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^#?SystemMaxUse='
+    line: 'SystemMaxUse=500M'
+    backup: yes
+  notify: restart systemd-journald
+
+- name: Configure systemd journal runtime vacuum size
+  lineinfile:
+    path: /etc/systemd/journald.conf
+    regexp: '^#?RuntimeMaxUse='
+    line: 'RuntimeMaxUse=500M'
+    backup: yes
+  notify: restart systemd-journald
+
+- name: Configure coredump storage limit
+  lineinfile:
+    path: /etc/systemd/coredump.conf
+    regexp: '^#?MaxUse='
+    line: 'MaxUse=500M'
+    create: yes
+    backup: yes
+  notify: restart systemd-coredump
+
+- name: Configure coredump keep free space
+  lineinfile:
+    path: /etc/systemd/coredump.conf
+    regexp: '^#?KeepFree='
+    line: 'KeepFree=1G'
+    backup: yes
+  notify: restart systemd-coredump
+
+- name: Clean existing journal files to apply new limits
+  shell: journalctl --vacuum-size=500M
+  changed_when: false
+
+- name: Clean existing coredump files to apply new limits
+  shell: find /var/lib/systemd/coredump -type f -name "*.zst" -o -name "core.*" | head -n -10 | xargs -r rm -f
+  changed_when: false
+  failed_when: false
+
+- name: Get current journal disk usage
+  shell: journalctl --disk-usage
+  register: journal_usage
+  changed_when: false
+
+- name: Get current coredump disk usage
+  shell: du -sh /var/lib/systemd/coredump 2>/dev/null || echo "0 /var/lib/systemd/coredump"
+  register: coredump_usage
+  changed_when: false
+
+- name: Display current disk usage
+  debug:
+    msg: 
+      - "Journal usage: {{ journal_usage.stdout }}"
+      - "Coredump usage: {{ coredump_usage.stdout }}"
