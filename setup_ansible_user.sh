@@ -65,7 +65,6 @@ Type=oneshot
 User=ansible
 WorkingDirectory=/home/ansible
 ExecStart=/usr/bin/ansible-pull -U $REPO_URL -i inventory/hosts.yml site.yml
-ExecStartPost=/bin/systemctl --user daemon-reload
 StandardOutput=journal
 StandardError=journal
 PrivateTmp=yes
