@@ -33,11 +33,10 @@ echo "Configuring passwordless sudo for ansible user..."
 echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
 chmod 440 /etc/sudoers.d/ansible
 
-# Create SSH directory for ansible user
-echo "Setting up SSH directory for ansible user..."
-mkdir -p /home/ansible/.ssh
-chmod 700 /home/ansible/.ssh
-chown ansible:ansible /home/ansible/.ssh
+# Create working directory for ansible user
+echo "Setting up working directory for ansible user..."
+mkdir -p /home/ansible
+chown ansible:ansible /home/ansible
 
 # Create ansible configuration directory
 echo "Creating ansible configuration directory..."
@@ -99,8 +98,10 @@ systemctl enable ansible-pull.timer
 systemctl start ansible-pull.timer
 
 echo "=== Setup completed successfully ==="
+echo "Repository URL: $REPO_URL"
+echo ""
 echo "Next steps:"
-echo "1. Configure SSH keys for ansible user if needed"
-echo "2. Test ansible connection: sudo -u ansible ansible localhost -m ping"
-echo "3. Check timer status: systemctl status ansible-pull.timer"
-echo "4. Check service logs: journalctl -u ansible-pull.service"
+echo "1. Test ansible-pull manually: sudo -u ansible ansible-pull -U $REPO_URL -i inventory/hosts.yml site.yml"
+echo "2. Check timer status: systemctl status ansible-pull.timer"
+echo "3. Check service logs: journalctl -u ansible-pull.service"
+echo "4. Monitor next automatic run: journalctl -f -u ansible-pull.service"
