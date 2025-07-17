@@ -60,8 +60,13 @@
     - { key: "kernel.randomize_va_space", value: "1" } # Reduce randomization overhead
 
 # I/O Scheduler Optimization
-- name: Check available I/O schedulers
-  shell: cat /sys/block/$(lsblk -no pkname $(findmnt -no SOURCE /) | head -1)/queue/scheduler
+- name: Find available block devices and their schedulers
+  shell: |
+    for disk in /sys/block/*/queue/scheduler; do
+      if [ -f "$disk" ]; then
+        echo "$(basename $(dirname $(dirname $disk))): $(cat $disk)"
+      fi
+    done
   register: io_scheduler_check
   changed_when: false
 
@@ -72,7 +77,6 @@
         echo mq-deadline > "$disk"
       fi
     done
-  when: "'mq-deadline' in io_scheduler_check.stdout"
   register: io_scheduler_result
   changed_when: false
 
