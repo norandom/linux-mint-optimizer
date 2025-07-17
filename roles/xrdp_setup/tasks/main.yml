@@ -1,0 +1,134 @@
+---
+- name: Install xrdp and dependencies
+  apt:
+    name:
+      - xrdp
+      - xorgxrdp
+      - pulseaudio-module-xrdp
+    state: present
+    update_cache: yes
+
+- name: Add xrdp user to ssl-cert group
+  user:
+    name: xrdp
+    groups: ssl-cert
+    append: yes
+
+- name: Create xrdp configuration directory
+  file:
+    path: /etc/xrdp
+    state: directory
+    mode: '0755'
+
+- name: Copy xrdp main configuration
+  copy:
+    src: xrdp.ini
+    dest: /etc/xrdp/xrdp.ini
+    backup: yes
+    mode: '0644'
+  notify: restart xrdp
+
+- name: Copy xrdp session manager configuration
+  copy:
+    src: sesman.ini
+    dest: /etc/xrdp/sesman.ini
+    backup: yes
+    mode: '0644'
+  notify: restart xrdp-sesman
+
+- name: Copy xrdp keyboard configuration
+  copy:
+    src: xrdp_keyboard.ini
+    dest: /etc/xrdp/xrdp_keyboard.ini
+    backup: yes
+    mode: '0644'
+  notify: restart xrdp
+
+- name: Copy SSL certificates
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/xrdp/{{ item }}"
+    mode: '0600'
+    owner: xrdp
+    group: xrdp
+  loop:
+    - cert.pem
+    - key.pem
+  notify: restart xrdp
+
+- name: Copy keyboard mapping files
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/xrdp/{{ item }}"
+    mode: '0644'
+  loop:
+    - km-00000406.ini
+    - km-00000407.ini
+    - km-00000409.ini
+    - km-0000040a.ini
+    - km-0000040b.ini
+    - km-0000040c.ini
+    - km-00000410.ini
+    - km-00000411.ini
+    - km-00000412.ini
+    - km-00000414.ini
+    - km-00000415.ini
+    - km-00000416.ini
+    - km-00000419.ini
+    - km-0000041d.ini
+    - km-00000807.ini
+    - km-00000809.ini
+    - km-0000080a.ini
+    - km-0000080c.ini
+    - km-00000813.ini
+    - km-00000816.ini
+    - km-0000100c.ini
+    - km-00010409.ini
+    - km-19360409.ini
+  notify: restart xrdp
+
+- name: Copy session startup scripts
+  copy:
+    src: "{{ item }}"
+    dest: "/etc/xrdp/{{ item }}"
+    mode: '0755'
+  loop:
+    - startwm.sh
+    - reconnectwm.sh
+  notify: restart xrdp-sesman
+
+- name: Create pulse audio configuration directory
+  file:
+    path: /etc/xrdp/pulse
+    state: directory
+    mode: '0755'
+
+- name: Copy pulse audio configuration
+  copy:
+    src: pulse/default.pa
+    dest: /etc/xrdp/pulse/default.pa
+    mode: '0644'
+  notify: restart xrdp-sesman
+
+- name: Enable and start xrdp service
+  systemd:
+    name: xrdp
+    enabled: yes
+    state: started
+
+- name: Enable and start xrdp-sesman service
+  systemd:
+    name: xrdp-sesman
+    enabled: yes
+    state: started
+
+- name: Configure firewall for xrdp (if ufw is active)
+  ufw:
+    rule: allow
+    port: '3389'
+    proto: tcp
+  ignore_errors: yes
+
+- name: Display xrdp status
+  debug:
+    msg: "XRDP installation complete. Remote desktop available on port 3389"
