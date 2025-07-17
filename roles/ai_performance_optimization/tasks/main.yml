@@ -20,20 +20,20 @@
     update_cache: yes
     cache_valid_time: 86400
 
-- name: Set CPU governor to performance
+- name: Set CPU governor to ondemand for dynamic scaling
   shell: |
     for cpu in /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor; do
       if [ -f "$cpu" ]; then
-        echo performance > "$cpu"
+        echo ondemand > "$cpu"
       fi
     done
   register: cpu_governor_result
   changed_when: false
 
-- name: Configure CPU governor to persist across reboots
+- name: Configure CPU governor to persist across reboots (set to ondemand for flexibility)
   lineinfile:
     path: /etc/default/cpufrequtils
-    line: 'GOVERNOR="performance"'
+    line: 'GOVERNOR="ondemand"'
     create: yes
     backup: yes
 
@@ -107,12 +107,12 @@
   register: grub_config_thp
   notify: update grub
 
-# CPU frequency scaling
-- name: Disable CPU frequency scaling for consistent performance
+# Final GRUB configuration with frequency scaling enabled
+- name: Configure GRUB with optimizations but keep frequency scaling
   lineinfile:
     path: /etc/default/grub
     regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
-    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash elevator=mq-deadline transparent_hugepage=madvise intel_pstate=disable"'
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash elevator=mq-deadline transparent_hugepage=madvise"'
     backup: yes
   register: grub_config_final
   notify: update grub
@@ -121,11 +121,12 @@
   debug:
     msg:
       - "AI Performance optimizations applied:"
-      - "- CPU Governor: performance"
+      - "- CPU Governor: ondemand (dynamic scaling enabled)"
       - "- IRQ Balancing: enabled"
       - "- Swappiness: 1 (minimal swap usage)"
       - "- I/O Scheduler: mq-deadline"
       - "- Transparent Huge Pages: madvise"
       - "- Memory overcommit: enabled"
       - "- NUMA balancing: disabled"
+      - "- CPU frequency scaling: enabled (use cpufreq-set to change profiles)"
       - "Note: Reboot required for full optimization"
