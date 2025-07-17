@@ -61,10 +61,9 @@
     opts: defaults,gid=999,mode=1770
     state: mounted
 
-- name: Add docker group to hugepages
+- name: Ensure docker group exists for hugepages
   group:
     name: docker
-    gid: 999
     state: present
 
 # Low Latency Network Optimizations

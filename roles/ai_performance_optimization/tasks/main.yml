@@ -80,14 +80,8 @@
   register: io_scheduler_result
   changed_when: false
 
-- name: Configure I/O scheduler persistence
-  lineinfile:
-    path: /etc/default/grub
-    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
-    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash elevator=mq-deadline"'
-    backup: yes
-  register: grub_config
-  notify: update grub
+# GRUB configuration is handled by advanced_performance role to avoid conflicts
+# This role only handles runtime I/O scheduler and THP settings
 
 # Transparent Huge Pages optimization
 - name: Check THP status
@@ -100,25 +94,6 @@
   when: "'[madvise]' not in thp_status.stdout"
   register: thp_result
   changed_when: thp_result.rc == 0
-
-- name: Configure THP persistence
-  lineinfile:
-    path: /etc/default/grub
-    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
-    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash elevator=mq-deadline transparent_hugepage=madvise"'
-    backup: yes
-  register: grub_config_thp
-  notify: update grub
-
-# Final GRUB configuration with frequency scaling enabled
-- name: Configure GRUB with optimizations but keep frequency scaling
-  lineinfile:
-    path: /etc/default/grub
-    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
-    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet splash elevator=mq-deadline transparent_hugepage=madvise"'
-    backup: yes
-  register: grub_config_final
-  notify: update grub
 
 - name: Display AI performance optimization status
   debug:
