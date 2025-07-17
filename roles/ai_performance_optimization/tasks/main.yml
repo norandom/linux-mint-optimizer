@@ -54,7 +54,6 @@
     - { key: "vm.overcommit_memory", value: "1" }    # Allow memory overcommit
     - { key: "vm.overcommit_ratio", value: "80" }    # Overcommit threshold
     # CPU scheduling
-    - { key: "kernel.sched_migration_cost_ns", value: "5000000" } # Reduce migration
     - { key: "kernel.sched_autogroup_enabled", value: "0" }       # Disable autogroup
     # Performance
     - { key: "kernel.numa_balancing", value: "0" }   # Disable NUMA balancing for VMs
