@@ -1,0 +1,78 @@
+---
+# Install and configure QEMU guest agent for better KVM integration
+- name: Install qemu-guest-agent
+  apt:
+    name: qemu-guest-agent
+    state: present
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Enable and start qemu-guest-agent
+  systemd:
+    name: qemu-guest-agent
+    enabled: yes
+    state: started
+
+# Install and configure tuned for VM performance optimization
+- name: Install tuned
+  apt:
+    name: tuned
+    state: present
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Enable and start tuned
+  systemd:
+    name: tuned
+    enabled: yes
+    state: started
+
+- name: Set tuned profile to virtual-guest
+  command: tuned-adm profile virtual-guest
+  register: tuned_result
+  changed_when: "'Switching to profile' in tuned_result.stdout"
+
+# Install and configure OpenSSH server
+- name: Install OpenSSH server
+  apt:
+    name: openssh-server
+    state: present
+    update_cache: yes
+    cache_valid_time: 86400
+
+- name: Configure SSH to allow root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PermitRootLogin'
+    line: 'PermitRootLogin yes'
+    backup: yes
+  notify: restart sshd
+
+- name: Configure SSH to allow password authentication
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: '^#?PasswordAuthentication'
+    line: 'PasswordAuthentication yes'
+    backup: yes
+  notify: restart sshd
+
+- name: Ensure SSH service is enabled and started
+  systemd:
+    name: ssh
+    enabled: yes
+    state: started
+
+- name: Configure firewall for SSH (if ufw is active)
+  ufw:
+    rule: allow
+    port: '22'
+    proto: tcp
+  ignore_errors: yes
+
+- name: Display KVM guest optimization status
+  debug:
+    msg: 
+      - "KVM Guest optimizations applied:"
+      - "- QEMU Guest Agent: Active"
+      - "- Tuned Profile: virtual-guest"
+      - "- SSH Server: Enabled with root login and password auth"
