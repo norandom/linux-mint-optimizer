@@ -1,4 +1,10 @@
 ---
+- name: Check if xrdp is already installed
+  command: dpkg-query -W -f='${Status}' xrdp
+  register: xrdp_check
+  changed_when: false
+  failed_when: false
+
 - name: Install xrdp and dependencies
   apt:
     name:
@@ -6,6 +12,8 @@
       - xorgxrdp
     state: present
     update_cache: yes
+    cache_valid_time: 86400  # Only update cache if older than 24 hours
+  when: xrdp_check.stdout != "install ok installed"
 
 - name: Add xrdp user to ssl-cert group
   user:
