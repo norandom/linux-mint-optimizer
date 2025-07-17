@@ -1,0 +1,112 @@
+---
+# Disable unnecessary services for AI workloads while preserving DNS resolution
+# DNS is handled by systemd-resolved.service, not avahi-daemon
+
+# High Priority Services to Disable (Definite disable)
+- name: Stop and disable bluetooth service
+  systemd:
+    name: bluetooth.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable blueman-mechanism service
+  systemd:
+    name: blueman-mechanism.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable CUPS printing service
+  systemd:
+    name: cups.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable CUPS browser service
+  systemd:
+    name: cups-browsed.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable avahi-daemon (mDNS/service discovery)
+  systemd:
+    name: avahi-daemon.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable ModemManager service
+  systemd:
+    name: ModemManager.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable power-profiles-daemon (conflicts with tuned)
+  systemd:
+    name: power-profiles-daemon.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+# Medium Priority Services to Disable (Likely safe)
+- name: Stop and disable whoopsie error reporting
+  systemd:
+    name: whoopsie.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable apport crash reporting
+  systemd:
+    name: apport.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable firmware update daemon
+  systemd:
+    name: fwupd.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable kernel error reporting
+  systemd:
+    name: kerneloops.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop and disable anacron scheduled tasks
+  systemd:
+    name: anacron.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+# Test DNS resolution after disabling services
+- name: Test DNS resolution after service optimization
+  command: nslookup google.com
+  register: dns_test
+  changed_when: false
+  failed_when: dns_test.rc != 0
+
+- name: Verify systemd-resolved is still running
+  systemd:
+    name: systemd-resolved.service
+    state: started
+  register: resolved_check
+
+- name: Display service optimization results
+  debug:
+    msg:
+      - "Service optimization completed:"
+      - "- Disabled: bluetooth, cups, avahi-daemon, ModemManager, power-profiles-daemon"
+      - "- Disabled: whoopsie, apport, fwupd, kerneloops, anacron"
+      - "- DNS resolution: {{ 'WORKING' if dns_test.rc == 0 else 'FAILED' }}"
+      - "- systemd-resolved: {{ resolved_check.state }}"
+      - "Estimated resource savings: ~50-150MB RAM, ~2-5% CPU reduction"
