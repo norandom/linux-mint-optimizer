@@ -88,6 +88,51 @@
     state: stopped
   ignore_errors: yes
 
+# Disable unnecessary desktop services
+- name: Disable speech-dispatcher service
+  systemd:
+    name: speech-dispatcher.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Disable evolution data server
+  systemd:
+    name: evolution-data-server.service
+    enabled: no
+    state: stopped
+  ignore_errors: yes
+
+- name: Disable blueman autostart (GUI bluetooth manager)
+  file:
+    path: /etc/xdg/autostart/blueman.desktop
+    state: absent
+  ignore_errors: yes
+
+- name: Disable evolution autostart
+  file:
+    path: /etc/xdg/autostart/evolution-data-server.desktop
+    state: absent
+  ignore_errors: yes
+
+- name: Disable at-spi accessibility services autostart
+  file:
+    path: /etc/xdg/autostart/at-spi-dbus-bus.desktop
+    state: absent
+  ignore_errors: yes
+
+- name: Kill existing unnecessary desktop processes
+  shell: |
+    pkill -f speech-dispatcher || true
+    pkill -f evolution-alarm-notify || true
+    pkill -f evolution-source-registry || true
+    pkill -f evolution-calendar-factory || true
+    pkill -f evolution-addressbook-factory || true
+    pkill -f at-spi-bus-launcher || true
+    pkill -f blueman-applet || true
+  ignore_errors: yes
+  changed_when: false
+
 # Test DNS resolution after disabling services
 - name: Test DNS resolution after service optimization
   command: nslookup google.com
@@ -107,6 +152,8 @@
       - "Service optimization completed:"
       - "- Disabled: bluetooth, cups, avahi-daemon, ModemManager, power-profiles-daemon"
       - "- Disabled: whoopsie, apport, fwupd, kerneloops, anacron"
+      - "- Disabled: speech-dispatcher, evolution-data-server, blueman-applet"
+      - "- Disabled: at-spi accessibility services"
       - "- DNS resolution: {{ 'WORKING' if dns_test.rc == 0 else 'FAILED' }}"
       - "- systemd-resolved: {{ resolved_check.state }}"
-      - "Estimated resource savings: ~50-150MB RAM, ~2-5% CPU reduction"
+      - "Estimated resource savings: ~80-200MB RAM, ~5-10% CPU reduction"
