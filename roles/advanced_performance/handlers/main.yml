@@ -1,0 +1,16 @@
+---
+- name: update grub
+  command: update-grub
+  when: grub_security_config is changed
+
+- name: sysctl reloaded
+  command: sysctl -p /etc/sysctl.d/99-advanced-performance.conf
+
+- name: remount root
+  command: mount -o remount /
+
+- name: restart docker
+  systemd:
+    name: docker
+    state: restarted
+  when: ansible_service_mgr == "systemd"
