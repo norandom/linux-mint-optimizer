@@ -43,17 +43,7 @@
     mode: '0644'
   notify: restart xrdp
 
-- name: Copy SSL certificates
-  copy:
-    src: "{{ item }}"
-    dest: "/etc/xrdp/{{ item }}"
-    mode: '0600'
-    owner: xrdp
-    group: xrdp
-  loop:
-    - cert.pem
-    - key.pem
-  notify: restart xrdp
+# SSL certificates will use xrdp defaults - no need to copy custom ones
 
 - name: Copy keyboard mapping files
   copy:
