@@ -4,7 +4,6 @@
     name:
       - xrdp
       - xorgxrdp
-      - pulseaudio-module-xrdp
     state: present
     update_cache: yes
 
