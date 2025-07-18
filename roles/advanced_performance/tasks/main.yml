@@ -82,7 +82,7 @@
 #     opts: defaults,gid=999,mode=1770
 #     state: mounted
 
-- name: Ensure docker group exists for hugepages
+- name: Ensure docker group exists
   group:
     name: docker
     state: present
