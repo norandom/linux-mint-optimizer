@@ -11,7 +11,7 @@ This project implements a **pull-based GitOps approach** for managing Linux Mint
 - **AI/ML Performance Optimization**: Comprehensive CPU, memory, and I/O optimizations for AI workloads
 - **KVM Guest Integration**: QEMU guest agent, tuned profiles, and VM-specific optimizations  
 - **Remote Desktop Access**: XRDP with bandwidth optimization for GUI access
-- **Docker Performance**: Huge pages, optimized networking, and container-specific tuning
+- **Docker Performance**: Optimized networking and container-specific tuning
 - **Service Optimization**: Disable unnecessary services to free resources
 - **Advanced Performance**: Security trade-offs and low-latency networking
 - **GitOps Automation**: Systems automatically sync and apply changes every 15 minutes
@@ -103,11 +103,10 @@ The system applies optimizations in the following order:
 
 ### 6. **advanced_performance** - Maximum Performance
 - **Security Trade-offs**: Disabled speculative execution mitigations
-- **Huge Pages**: 25% of RAM reserved for Docker containers
 - **Low Latency Network**: BBR congestion control, TCP Fast Open
 - **Filesystem**: noatime, optimized for qcow2 VMs
 - **CPU C-States**: Limited to C0/C1 for consistent performance
-- **Docker Integration**: Configured for huge pages and performance
+- **Docker Integration**: Configured for performance
 
 ## Performance Improvements
 
@@ -122,18 +121,16 @@ The system applies optimizations in the following order:
 | **Advanced Tuning** | 10-15% | 20-30% | 25-40% |
 | **Combined Effect** | **15-25%** | **30-50%** | **40-70%** |
 
-### Docker with Huge Pages
+### Docker Performance
 
-After optimization, use huge pages in Docker:
+After optimization, Docker is configured for optimal performance:
 
 ```bash
-# Run AI container with huge pages
-docker run --shm-size=2g --tmpfs /tmp:rw,size=1g,huge=always \
-           --ulimit memlock=-1 your-ai-container
+# Run AI container with optimized settings
+docker run --shm-size=2g --ulimit memlock=-1 your-ai-container
 
-# Check huge pages usage
-cat /proc/meminfo | grep -i huge
-ls -la /mnt/hugepages/
+# Check Docker performance
+docker info
 ```
 
 ## Project Structure
@@ -162,7 +159,6 @@ ls -la /mnt/hugepages/
 | Memory Swapping | Default | swappiness=1 | `/etc/sysctl.d/99-ai-performance.conf` |
 | I/O Scheduler | Default | mq-deadline | Runtime + GRUB |
 | CPU Governor | Default | ondemand | `/etc/default/cpufrequtils` |
-| Huge Pages | 0 | 25% of RAM | `/etc/sysctl.d/99-advanced-performance.conf` |
 | Services | ~56 enabled | ~45 enabled | Disabled unnecessary services |
 | Security Mitigations | Enabled | Disabled | GRUB `mitigations=off` |
 
@@ -218,8 +214,8 @@ journalctl -u ansible-pull.service -f
 journalctl --disk-usage
 du -sh /var/lib/systemd/coredump
 
-# Check huge pages
-cat /proc/meminfo | grep -i huge
+# Check memory settings
+cat /proc/meminfo | grep -i mem
 
 # Check CPU governor
 cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
@@ -268,8 +264,8 @@ cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
 # Manually set performance mode
 sudo cpufreq-set -g performance
 
-# Check huge pages
-cat /proc/meminfo | grep -i huge
+# Check memory settings
+cat /proc/meminfo | grep -i mem
 
 # Check disabled services
 systemctl list-unit-files --state=disabled | grep -E "(bluetooth|cups|avahi)"

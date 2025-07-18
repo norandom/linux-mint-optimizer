@@ -96,11 +96,13 @@
     state: stopped
   ignore_errors: yes
 
-- name: Disable evolution data server
-  systemd:
-    name: evolution-data-server.service
-    enabled: no
-    state: stopped
+- name: Remove evolution packages
+  apt:
+    name:
+      - evolution-data-server
+      - evolution-data-server-common
+    state: absent
+    purge: yes
   ignore_errors: yes
 
 - name: Disable blueman autostart (GUI bluetooth manager)
