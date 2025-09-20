@@ -1,3 +1,6 @@
 #!/bin/sh
+# Script to handle reconnection to existing sessions
 
-# Write procedures here you want to execute on reconnect
+# Just exit successfully - the session is already running
+# and xrdp will reconnect to it
+exit 0

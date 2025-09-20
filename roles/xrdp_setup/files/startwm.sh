@@ -14,14 +14,20 @@ if test -r ~/.profile; then
 	. ~/.profile
 fi
 
+# Clear any stale session variables
+unset SESSION_MANAGER
+unset DBUS_SESSION_BUS_ADDRESS
+
+# Start a fresh dbus session for this display
+eval $(dbus-launch --sh-syntax --exit-with-session)
+
 # Optimize for bandwidth - disable compositing and effects
 export XORG_BACKING_STORE=NotUseful
-export MATE_DESKTOP_SESSION_ID=
 
 # Disable animations and effects for bandwidth optimization
 gsettings set org.mate.Marco.general compositing-manager false 2>/dev/null || true
 gsettings set org.mate.interface enable-animations false 2>/dev/null || true
 
+# Start the session
 test -x /etc/X11/Xsession && exec /etc/X11/Xsession
-# exec /bin/sh /etc/X11/Xsession
-mate-session
+exec mate-session
