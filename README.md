@@ -238,6 +238,17 @@ systemctl list-units --type=service --state=running | wc -l
 - All changes are version controlled
 - Service runs with `PrivateTmp=yes` isolation
 
+### 🔐 SSL/TLS Certificates Notice
+This repository contains example SSL certificates (`cert.pem`, `key.pem`) for XRDP.
+**Risk Accepted for Local Use:** For local development and isolated testing environments, the use of these example certificates is considered an accepted risk.
+**CRITICAL for Production Environments:** These certificates are for example purposes only and **MUST BE REPLACED** with your own securely generated certificates if this playbook is used in a production or publicly accessible environment.
+
+To generate your own secure certificates, use the following command:
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365
+```
+After generating, ensure `roles/xrdp_setup/tasks/main.yml` is configured to copy your custom certificates to `/etc/xrdp/` and that `roles/xrdp_setup/files/xrdp.ini` is updated to point to these files if paths differ from default.
+
 ## Troubleshooting
 
 ### Service Fails
