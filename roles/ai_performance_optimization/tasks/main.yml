@@ -35,6 +35,7 @@
     path: /etc/default/cpufrequtils
     line: 'GOVERNOR="ondemand"'
     create: yes
+    mode: '0644'
     backup: yes
 
 # Memory + swap

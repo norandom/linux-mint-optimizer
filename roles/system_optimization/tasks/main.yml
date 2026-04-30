@@ -21,6 +21,7 @@
     regexp: '^#?MaxUse='
     line: 'MaxUse=500M'
     create: yes
+    mode: '0644'
     backup: yes
   notify: restart systemd-coredump
 
@@ -37,7 +38,11 @@
   changed_when: false
 
 - name: Clean existing coredump files to apply new limits
-  shell: find /var/lib/systemd/coredump -type f -name "*.zst" -o -name "core.*" | head -n -10 | xargs -r rm -f
+  shell: |
+    set -o pipefail
+    find /var/lib/systemd/coredump -type f \( -name "*.zst" -o -name "core.*" \) | head -n -10 | xargs -r rm -f
+  args:
+    executable: /bin/bash
   changed_when: false
   failed_when: false
 

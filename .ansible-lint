@@ -1,0 +1,8 @@
+---
+# Stylistic rules we don't enforce on this in-house playbook.
+# Real safety rules (risky-file-permissions, risky-shell-pipe, etc.) stay on.
+skip_list:
+  - fqcn[action-core]            # 'systemd:' is fine; we're not shipping this as a collection.
+  - yaml[truthy]                 # 'yes'/'no' is valid YAML and Ansible accepts both.
+  - var-naming[no-role-prefix]   # No prefix collisions in a single-playbook setup.
+  - name[casing]                 # Handler/task name casing is a style preference.
