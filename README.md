@@ -1,328 +1,205 @@
-# Linux Mint Optimizer - Comprehensive AI/ML Performance Suite
+# Linux Mint Optimizer
 
-A GitOps-based comprehensive optimization toolkit for Linux Mint systems running AI/ML workloads in Docker containers on KVM/libvirt VMs.
+Ansible roles that tune a Linux Mint VM for AI/ML workloads in Docker on KVM/libvirt. Each system pulls this repo on a timer and applies the playbook locally. No central control node, no SSH keys.
 
-## Overview
+## What this is
 
-This project implements a **pull-based GitOps approach** for managing Linux Mint system optimizations. Instead of pushing configurations to remote systems, each system autonomously pulls the latest configuration from this GitHub repository and applies it locally.
+A pull-based GitOps setup. Instead of a control node pushing config out, every host runs `ansible-pull` against this repo every 15 minutes and applies the playbook to itself.
 
-### Key Features
-
-- **AI/ML Performance Optimization**: Comprehensive CPU, memory, and I/O optimizations for AI workloads
-- **KVM Guest Integration**: QEMU guest agent, tuned profiles, and VM-specific optimizations  
-- **Remote Desktop Access**: XRDP with bandwidth optimization for GUI access
-- **Docker Performance**: Optimized networking and container-specific tuning
-- **Service Optimization**: Disable unnecessary services to free resources
-- **Advanced Performance**: Security trade-offs and low-latency networking
-- **GitOps Automation**: Systems automatically sync and apply changes every 15 minutes
-- **Ansible-Pull Architecture**: No SSH keys or central management server required
-
-## Architecture
+Why pull instead of push:
+- No SSH access or key management between a control node and the VMs.
+- Each VM is autonomous. Bring up a new one, run the setup script, and it joins the fleet.
+- Changes are git commits. Rollback is a revert.
 
 ```
-GitHub Repository → ansible-pull → Local Ansible → System Changes
-       ↑                ↑              ↑              ↑
-   Git commits      Systemd Timer   Local execution  File changes
+GitHub repo  ->  ansible-pull (systemd timer)  ->  local Ansible run  ->  changes applied
 ```
 
-### Ansible-Pull vs Traditional Ansible
+## Quick setup
 
-**Traditional Ansible (Push)**:
-- Central control node pushes to managed nodes
-- Requires SSH access and key management
-- Immediate execution from control node
-
-**Ansible-Pull (Pull)**:
-- Each node pulls from Git repository
-- No SSH required, only Git access
-- Autonomous execution via systemd timer
-- Perfect for GitOps workflows
-
-## Quick Setup
-
-1. **Clone and customize** (optional):
-   ```bash
-   git clone https://github.com/norandom/linux-mint-optimizer.git
-   cd linux-mint-optimizer
-   # Modify roles as needed
-   ```
-
-2. **Run setup script** on target system:
-   ```bash
-   sudo ./setup_ansible_user.sh
-   # Enter your GitHub repository URL when prompted
-   ```
-
-3. **Verify operation**:
-   ```bash
-   # Check timer status
-   systemctl status ansible-pull.timer
-   
-   # View logs
-   journalctl -u ansible-pull.service -f
-   
-   # Manual test
-   sudo ansible-playbook -i inventory/hosts.yml site.yml
-   ```
-
-## Optimization Roles
-
-The system applies optimizations in the following order:
-
-### 1. **system_optimization** - Base System Cleanup
-- **systemd Journal**: Reduces from ~4GB+ to 500MB
-- **Core Dumps**: Reduces from ~4GB+ to 500MB
-- **Disk Usage**: Monitors and reports current usage
-
-### 2. **xrdp_setup** - Remote Desktop Access
-- **XRDP Server**: Remote desktop on port 3389
-- **Bandwidth Optimization**: Disabled compositing and animations
-- **SSL Configuration**: Secure remote access
-- **Keyboard Mappings**: Comprehensive international support
-
-### 3. **kvm_guest_optimization** - Virtual Machine Integration
-- **QEMU Guest Agent**: Better VM management from host
-- **Tuned Profile**: virtual-guest for VM optimization
-- **SSH Server**: Root login enabled with password authentication
-- **Firewall**: Configured for SSH (port 22) and XRDP (port 3389)
-
-### 4. **ai_performance_optimization** - AI/ML Workload Tuning
-- **CPU Governor**: ondemand (dynamic scaling enabled)
-- **IRQ Balancing**: Distribute interrupts across CPUs
-- **Memory Management**: swappiness=1, overcommit enabled
-- **I/O Scheduler**: mq-deadline (optimal for VMs)
-- **NUMA Balancing**: Disabled (not needed in VMs)
-- **Transparent Huge Pages**: Set to madvise
-
-### 5. **service_optimization** - Resource Cleanup
-- **Disabled Services**: bluetooth, cups, avahi-daemon, ModemManager
-- **Error Reporting**: whoopsie, apport, kerneloops disabled
-- **Firmware Updates**: fwupd disabled (run manually when needed)
-- **DNS Verification**: Ensures systemd-resolved still works
-- **Resource Savings**: ~50-150MB RAM, ~2-5% CPU reduction
-
-### 6. **advanced_performance** - Maximum Performance
-- **Security Trade-offs**: Disabled speculative execution mitigations
-- **Low Latency Network**: BBR congestion control, TCP Fast Open
-- **Filesystem**: noatime, optimized for qcow2 VMs
-- **CPU C-States**: Limited to C0/C1 for consistent performance
-- **Docker Integration**: Configured for performance
-
-## Performance Improvements
-
-### Estimated Performance Gains
-
-| Optimization Category | Light Workloads | Heavy AI Workloads | Memory-Constrained |
-|----------------------|-----------------|-------------------|-------------------|
-| **Memory Optimizations** | 10-15% | 20-30% | 30-50% |
-| **CPU Optimizations** | 5-10% | 15-25% | 10-20% |
-| **I/O Optimizations** | 5-10% | 10-15% | 5-15% |
-| **Service Cleanup** | 5-10% | 10-15% | 15-25% |
-| **Advanced Tuning** | 10-15% | 20-30% | 25-40% |
-| **Combined Effect** | **15-25%** | **30-50%** | **40-70%** |
-
-### Docker Performance
-
-After optimization, Docker is configured for optimal performance:
+Clone the repo (optional, only needed if you want to customize):
 
 ```bash
-# Run AI container with optimized settings
-docker run --shm-size=2g --ulimit memlock=-1 your-ai-container
-
-# Check Docker performance
-docker info
+git clone https://github.com/norandom/linux-mint-optimizer.git
+cd linux-mint-optimizer
 ```
 
-## Project Structure
-
-```
-├── ansible.cfg                 # Ansible configuration
-├── site.yml                   # Main playbook (all roles)
-├── setup_ansible_user.sh      # System preparation script
-├── inventory/
-│   └── hosts.yml              # Inventory for localhost
-└── roles/
-    ├── system_optimization/           # Base system cleanup
-    ├── xrdp_setup/                   # Remote desktop
-    ├── kvm_guest_optimization/       # VM integration
-    ├── ai_performance_optimization/  # AI workload tuning
-    ├── service_optimization/         # Service cleanup
-    └── advanced_performance/         # Maximum performance
-```
-
-## What Gets Optimized
-
-| Component | Before | After | Configuration |
-|-----------|--------|-------|---------------|
-| systemd Journal | ~4GB+ | 500MB | `/etc/systemd/journald.conf` |
-| Core Dumps | ~4GB+ | 500MB | `/etc/systemd/coredump.conf` |
-| Memory Swapping | Default | swappiness=1 | `/etc/sysctl.d/99-ai-performance.conf` |
-| I/O Scheduler | Default | mq-deadline | Runtime + GRUB |
-| CPU Governor | Default | ondemand | `/etc/default/cpufrequtils` |
-| Services | ~56 enabled | ~45 enabled | Disabled unnecessary services |
-| Security Mitigations | Enabled | Disabled | GRUB `mitigations=off` |
-
-## Systemd Integration
-
-The setup creates two systemd units:
-
-### ansible-pull.service
-- **Type**: oneshot
-- **User**: ansible (passwordless sudo)
-- **Function**: Executes ansible-pull command
-- **Trigger**: Called by timer or manually
-
-### ansible-pull.timer
-- **Schedule**: Every 15 minutes with 2-minute random delay
-- **Boot delay**: 5 minutes after boot
-- **Function**: Triggers the service automatically
-
-### Timer Configuration
-```ini
-[Timer]
-OnBootSec=5min           # Wait 5 minutes after boot
-OnUnitActiveSec=15min    # Run every 15 minutes
-RandomizedDelaySec=2min  # Add 0-2 minute random delay
-```
-
-## Adding More Systems
-
-### Pull-based management (GitOps):
-- Run `setup_ansible_user.sh` on each new system
-- Each system will independently pull and apply changes
-- Perfect for managing multiple VMs
-
-### Manual deployment:
-```bash
-# Deploy to current system
-sudo ansible-playbook -i inventory/hosts.yml site.yml
-
-# Check what would change
-sudo ansible-playbook -i inventory/hosts.yml site.yml --check --diff
-```
-
-## Monitoring
+Run the setup script on the target system:
 
 ```bash
-# Check next run time
-systemctl list-timers ansible-pull.timer
-
-# Follow logs in real-time
-journalctl -u ansible-pull.service -f
-
-# Check current disk usage
-journalctl --disk-usage
-du -sh /var/lib/systemd/coredump
-
-# Check memory settings
-cat /proc/meminfo | grep -i mem
-
-# Check CPU governor
-cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-
-# Check active services
-systemctl list-units --type=service --state=running | wc -l
+sudo ./setup_ansible_user.sh
+# It will ask for your repo URL.
 ```
 
-## Security Considerations
+Verify:
 
-⚠️ **Performance vs Security Trade-offs**:
-- **Speculative execution mitigations**: Disabled for performance
-- **Audit logging**: Disabled to reduce overhead
-- **Root SSH access**: Enabled for VM management
-- **Passwordless sudo**: ansible user has full access
-
-**Mitigations**:
-- VMs are isolated from host network
-- Ansible user access is logged
-- All changes are version controlled
-- Service runs with `PrivateTmp=yes` isolation
-
-### 🔐 SSL/TLS Certificates Notice
-This repository contains example SSL certificates (`cert.pem`, `key.pem`) for XRDP.
-**Risk Accepted for Local Use:** For local development and isolated testing environments, the use of these example certificates is considered an accepted risk.
-**CRITICAL for Production Environments:** These certificates are for example purposes only and **MUST BE REPLACED** with your own securely generated certificates if this playbook is used in a production or publicly accessible environment.
-
-To generate your own secure certificates, use the following command:
-```bash
-openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365
-```
-After generating, ensure `roles/xrdp_setup/tasks/main.yml` is configured to copy your custom certificates to `/etc/xrdp/` and that `roles/xrdp_setup/files/xrdp.ini` is updated to point to these files if paths differ from default.
-
-## Troubleshooting
-
-### Service Fails
-```bash
-journalctl -u ansible-pull.service --no-pager -n 50
-```
-
-### Timer Not Running
 ```bash
 systemctl status ansible-pull.timer
-systemctl enable ansible-pull.timer
+journalctl -u ansible-pull.service -f
+sudo ansible-playbook -i inventory/hosts.yml site.yml
 ```
 
-### Manual Testing
-```bash
-sudo ansible-playbook -i inventory/hosts.yml site.yml -v
-```
+## Roles
 
-### Performance Issues
-```bash
-# Check CPU governor
-cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+The playbook runs these in order:
 
-# Manually set performance mode
-sudo cpufreq-set -g performance
+1. `system_optimization`: caps systemd journal and coredump storage at 500MB each.
+2. `xrdp_setup`: installs xrdp on port 3389, ships keyboard maps and a startwm.sh that disables compositing/animations to save bandwidth.
+3. `kvm_guest_optimization`: qemu-guest-agent, tuned `virtual-guest` profile, OpenSSH with root login enabled (see security note below), firewall rules for 22 and 3389.
+4. `ai_performance_optimization`: irqbalance, ondemand CPU governor, sysctl tuning (`vm.swappiness=1`, overcommit on, NUMA balancing off), `mq-deadline` I/O scheduler, THP set to madvise.
+5. `service_optimization`: disables bluetooth, cups, avahi-daemon, ModemManager, whoopsie, apport, kerneloops, fwupd. systemd-resolved stays on so DNS keeps working; the role tests `nslookup` after.
+6. `advanced_performance`: GRUB cmdline gets `mitigations=off audit=0 elevator=mq-deadline transparent_hugepage=madvise intel_idle.max_cstate=1`. Also BBR + TCP Fast Open, noatime on root, deeper C-states disabled, and a Docker daemon.json with overlay2 + memlock unlimited.
 
-# Check memory settings
-cat /proc/meminfo | grep -i mem
+## Expected gains
 
-# Check disabled services
-systemctl list-unit-files --state=disabled | grep -E "(bluetooth|cups|avahi)"
-```
+These are ballpark, not measured on your hardware. Memory-constrained VMs benefit the most.
 
-### Reboot Requirements
+| Category | Light | Heavy AI | Memory-constrained |
+|---|---|---|---|
+| Memory | 10-15% | 20-30% | 30-50% |
+| CPU | 5-10% | 15-25% | 10-20% |
+| I/O | 5-10% | 10-15% | 5-15% |
+| Service cleanup | 5-10% | 10-15% | 15-25% |
+| Advanced tuning | 10-15% | 20-30% | 25-40% |
+| Combined | 15-25% | 30-50% | 40-70% |
 
-Some optimizations require a reboot for full effect:
-- GRUB kernel parameters (I/O scheduler, huge pages, security mitigations)
-- Kernel parameter changes via sysctl
-- Service optimizations are immediate
+If you actually want to know what it does on your workload, benchmark before and after.
 
-```bash
-# Check if reboot is needed
-sudo reboot  # After first deployment for full optimization
-```
+## Running Docker AI containers
 
-## CPU Governor Control
-
-The system uses `ondemand` governor by default. For maximum AI performance:
+The Docker daemon gets configured for overlay2 with memlock unlimited. For a container:
 
 ```bash
-# Switch to performance governor
-sudo cpufreq-set -g performance
-
-# Check current governor
-cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
-
-# Available governors
-cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
-```
-
-## Docker Integration
-
-The system is optimized for Docker AI workloads:
-
-```bash
-# Run container with optimizations
 docker run --shm-size=2g \
            --tmpfs /tmp:rw,size=1g,huge=always \
            --ulimit memlock=-1 \
            --cpus="4" \
            your-ai-container
-
-# Check Docker configuration
-sudo cat /etc/docker/daemon.json
 ```
 
-This comprehensive optimization suite transforms a standard Linux Mint VM into a high-performance AI/ML workstation with significant performance improvements across CPU, memory, I/O, and network operations.
+## Project layout
+
+```
+ansible.cfg                # ansible config
+site.yml                   # main playbook
+setup_ansible_user.sh      # bootstrap script
+inventory/hosts.yml        # localhost inventory
+roles/
+  system_optimization/
+  xrdp_setup/
+  kvm_guest_optimization/
+  ai_performance_optimization/
+  service_optimization/
+  advanced_performance/
+```
+
+## What gets changed
+
+| Component | Before | After | Where |
+|---|---|---|---|
+| systemd journal | ~4GB+ | 500MB | `/etc/systemd/journald.conf` |
+| coredumps | ~4GB+ | 500MB | `/etc/systemd/coredump.conf` |
+| swappiness | default | 1 | `/etc/sysctl.d/99-ai-performance.conf` |
+| I/O scheduler | default | mq-deadline | runtime + GRUB |
+| CPU governor | default | ondemand | `/etc/default/cpufrequtils` |
+| Services | ~56 enabled | ~45 enabled | systemctl disable |
+| CPU mitigations | on | off | GRUB `mitigations=off` |
+
+## systemd units
+
+The setup script writes two units:
+
+- `ansible-pull.service`: oneshot, runs as the `ansible` user, calls `ansible-pull`.
+- `ansible-pull.timer`: fires 5min after boot, then every 15min with a 0-2min random delay.
+
+```ini
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=15min
+RandomizedDelaySec=2min
+```
+
+## Adding more hosts
+
+Run `setup_ansible_user.sh` on each one. They will pull and apply independently.
+
+For a one-off manual run:
+
+```bash
+sudo ansible-playbook -i inventory/hosts.yml site.yml
+sudo ansible-playbook -i inventory/hosts.yml site.yml --check --diff   # dry run
+```
+
+## Monitoring
+
+```bash
+systemctl list-timers ansible-pull.timer
+journalctl -u ansible-pull.service -f
+
+journalctl --disk-usage
+du -sh /var/lib/systemd/coredump
+
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+systemctl list-units --type=service --state=running | wc -l
+```
+
+## Security notes
+
+This setup trades security for performance and convenience. Do not run it on anything exposed to the public internet.
+
+- `mitigations=off` disables Spectre/Meltdown CPU mitigations.
+- `audit=0` turns off the kernel audit subsystem.
+- SSH allows root login with passwords.
+- The `ansible` user has passwordless sudo.
+
+The assumption is that these VMs sit behind a firewall, are only reached from a trusted host network, and the cost of a compromised guest is bounded. If that is not your situation, do not deploy this as-is.
+
+The xrdp role uses xrdp's bundled SSL certificate. That is fine on a trusted local network, not fine if anything reaches port 3389 from the internet. To replace it, generate your own and point xrdp.ini at it:
+
+```bash
+openssl req -x509 -newkey rsa:4096 -nodes -keyout key.pem -out cert.pem -days 365
+```
+
+The accepted-risk inventory for personal/lab use is in `Risks.md`.
+
+## Troubleshooting
+
+Service failed:
+
+```bash
+journalctl -u ansible-pull.service --no-pager -n 50
+```
+
+Timer not running:
+
+```bash
+systemctl status ansible-pull.timer
+systemctl enable ansible-pull.timer
+```
+
+Manual verbose run:
+
+```bash
+sudo ansible-playbook -i inventory/hosts.yml site.yml -v
+```
+
+CPU not at expected speed:
+
+```bash
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+sudo cpufreq-set -g performance   # pin to performance instead of ondemand
+```
+
+## Reboot
+
+Some changes need a reboot to take full effect: GRUB cmdline parameters, kernel parameter changes via sysctl that touch boot-time settings. Service changes apply immediately. After the first run, reboot once.
+
+## CPU governor
+
+Default is `ondemand`. For sustained AI workloads where you want maximum clock at the cost of power:
+
+```bash
+sudo cpufreq-set -g performance
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
+```

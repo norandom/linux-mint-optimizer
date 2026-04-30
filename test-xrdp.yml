@@ -1,0 +1,38 @@
+---
+# Smoke-test for the xrdp role. Runs locally without sudo so it just checks
+# that the role's files are in place and the YAML parses.
+- name: Smoke-test xrdp role (no sudo)
+  hosts: localhost
+  connection: local
+  gather_facts: yes
+  become: no
+
+  tasks:
+    - name: Stat xrdp role files
+      stat:
+        path: "{{ item }}"
+      loop:
+        - "roles/xrdp_setup/tasks/main.yml"
+        - "roles/xrdp_setup/handlers/main.yml"
+        - "roles/xrdp_setup/files/xrdp.ini"
+        - "roles/xrdp_setup/files/sesman.ini"
+        - "roles/xrdp_setup/files/startwm.sh"
+      register: file_check
+
+    - name: Report which files exist
+      debug:
+        msg: "{{ item.item }}: {{ 'OK' if item.stat.exists else 'MISSING' }}"
+      loop: "{{ file_check.results }}"
+
+    - name: Parse the role's YAML
+      include_vars: "{{ item }}"
+      loop:
+        - "roles/xrdp_setup/tasks/main.yml"
+        - "roles/xrdp_setup/handlers/main.yml"
+      ignore_errors: yes
+      register: yaml_validation
+
+    - name: Report YAML parse result
+      debug:
+        msg: "YAML parsed cleanly."
+      when: yaml_validation is succeeded

@@ -1,5 +1,5 @@
 ---
-# CPU Performance Optimizations
+# CPU
 - name: Install irqbalance for interrupt distribution
   apt:
     name: irqbalance
@@ -37,7 +37,7 @@
     create: yes
     backup: yes
 
-# Memory and Swap Optimization
+# Memory + swap
 - name: Configure kernel parameters for AI workloads
   sysctl:
     name: "{{ item.key }}"
@@ -46,20 +46,20 @@
     sysctl_file: /etc/sysctl.d/99-ai-performance.conf
     reload: yes
   loop:
-    # Memory management
-    - { key: "vm.swappiness", value: "1" }           # Reduce swap usage
-    - { key: "vm.vfs_cache_pressure", value: "50" }  # Keep more cache
-    - { key: "vm.dirty_ratio", value: "15" }         # Reduce dirty pages
-    - { key: "vm.dirty_background_ratio", value: "5" } # Background writeback
-    - { key: "vm.overcommit_memory", value: "1" }    # Allow memory overcommit
-    - { key: "vm.overcommit_ratio", value: "80" }    # Overcommit threshold
-    # CPU scheduling
-    - { key: "kernel.sched_autogroup_enabled", value: "0" }       # Disable autogroup
-    # Performance
-    - { key: "kernel.numa_balancing", value: "0" }   # Disable NUMA balancing for VMs
-    - { key: "kernel.randomize_va_space", value: "1" } # Reduce randomization overhead
+    # vm.*
+    - { key: "vm.swappiness", value: "1" }              # avoid swapping
+    - { key: "vm.vfs_cache_pressure", value: "50" }     # keep more page cache
+    - { key: "vm.dirty_ratio", value: "15" }
+    - { key: "vm.dirty_background_ratio", value: "5" }
+    - { key: "vm.overcommit_memory", value: "1" }       # allow overcommit
+    - { key: "vm.overcommit_ratio", value: "80" }
+    # scheduler
+    - { key: "kernel.sched_autogroup_enabled", value: "0" }
+    # NUMA balancing is wasted work inside a VM
+    - { key: "kernel.numa_balancing", value: "0" }
+    - { key: "kernel.randomize_va_space", value: "1" }
 
-# I/O Scheduler Optimization
+# I/O scheduler
 - name: Find available block devices and their schedulers
   shell: |
     for disk in /sys/block/*/queue/scheduler; do
@@ -70,7 +70,7 @@
   register: io_scheduler_check
   changed_when: false
 
-- name: Set I/O scheduler to mq-deadline (best for VMs)
+- name: Set I/O scheduler to mq-deadline
   shell: |
     for disk in /sys/block/*/queue/scheduler; do
       if [ -f "$disk" ] && grep -q "mq-deadline" "$disk"; then
@@ -80,31 +80,29 @@
   register: io_scheduler_result
   changed_when: false
 
-# GRUB configuration is handled by advanced_performance role to avoid conflicts
-# This role only handles runtime I/O scheduler and THP settings
+# GRUB cmdline lives in the advanced_performance role; this one only sets
+# runtime I/O scheduler + THP so they don't fight each other.
 
-# Transparent Huge Pages optimization
+# Transparent Huge Pages
 - name: Check THP status
   command: cat /sys/kernel/mm/transparent_hugepage/enabled
   register: thp_status
   changed_when: false
 
-- name: Set THP to madvise (better for memory-intensive AI)
+- name: Set THP to madvise
   shell: echo madvise > /sys/kernel/mm/transparent_hugepage/enabled
   when: "'[madvise]' not in thp_status.stdout"
   register: thp_result
   changed_when: thp_result.rc == 0
 
-- name: Display AI performance optimization status
+- name: Show what got set
   debug:
     msg:
-      - "AI Performance optimizations applied:"
-      - "- CPU Governor: ondemand (dynamic scaling enabled)"
-      - "- IRQ Balancing: enabled"
-      - "- Swappiness: 1 (minimal swap usage)"
-      - "- I/O Scheduler: mq-deadline"
-      - "- Transparent Huge Pages: madvise"
-      - "- Memory overcommit: enabled"
-      - "- NUMA balancing: disabled"
-      - "- CPU frequency scaling: enabled (use cpufreq-set to change profiles)"
-      - "Note: Reboot required for full optimization"
+      - "CPU governor: ondemand"
+      - "IRQ balancing: on"
+      - "swappiness: 1"
+      - "I/O scheduler: mq-deadline"
+      - "THP: madvise"
+      - "memory overcommit: on"
+      - "NUMA balancing: off"
+      - "Reboot to pick up the GRUB-side changes."

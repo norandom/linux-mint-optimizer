@@ -51,8 +51,8 @@
   register: coredump_usage
   changed_when: false
 
-- name: Display current disk usage
+- name: Show current disk usage
   debug:
-    msg: 
-      - "Journal usage: {{ journal_usage.stdout }}"
-      - "Coredump usage: {{ coredump_usage.stdout }}"
+    msg:
+      - "Journal: {{ journal_usage.stdout }}"
+      - "Coredumps: {{ coredump_usage.stdout }}"

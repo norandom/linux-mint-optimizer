@@ -1,8 +1,8 @@
 ---
-# Disable unnecessary services for AI workloads while preserving DNS resolution
-# DNS is handled by systemd-resolved.service, not avahi-daemon
+# Turn off services we don't use on these VMs.
+# DNS keeps working because systemd-resolved handles it (not avahi).
 
-# High Priority Services to Disable (Definite disable)
+# Definitely off
 - name: Stop and disable bluetooth service
   systemd:
     name: bluetooth.service
@@ -52,7 +52,7 @@
     state: stopped
   ignore_errors: yes
 
-# Medium Priority Services to Disable (Likely safe)
+# Probably safe
 - name: Stop and disable whoopsie error reporting
   systemd:
     name: whoopsie.service
@@ -88,7 +88,7 @@
     state: stopped
   ignore_errors: yes
 
-# Disable unnecessary desktop services
+# Desktop bits we don't need on a headless-ish VM
 - name: Disable speech-dispatcher service
   systemd:
     name: speech-dispatcher.service
@@ -135,7 +135,7 @@
   ignore_errors: yes
   changed_when: false
 
-# Test DNS resolution after disabling services
+# Sanity check: did we accidentally break DNS?
 - name: Test DNS resolution after service optimization
   command: nslookup google.com
   register: dns_test
@@ -148,14 +148,12 @@
     state: started
   register: resolved_check
 
-- name: Display service optimization results
+- name: Show what got disabled
   debug:
     msg:
-      - "Service optimization completed:"
-      - "- Disabled: bluetooth, cups, avahi-daemon, ModemManager, power-profiles-daemon"
-      - "- Disabled: whoopsie, apport, fwupd, kerneloops, anacron"
-      - "- Disabled: speech-dispatcher, evolution-data-server, blueman-applet"
-      - "- Disabled: at-spi accessibility services"
-      - "- DNS resolution: {{ 'WORKING' if dns_test.rc == 0 else 'FAILED' }}"
-      - "- systemd-resolved: {{ resolved_check.state }}"
-      - "Estimated resource savings: ~80-200MB RAM, ~5-10% CPU reduction"
+      - "Off: bluetooth, cups, avahi-daemon, ModemManager, power-profiles-daemon"
+      - "Off: whoopsie, apport, fwupd, kerneloops, anacron"
+      - "Off: speech-dispatcher, evolution-data-server, blueman-applet, at-spi"
+      - "DNS: {{ 'OK' if dns_test.rc == 0 else 'BROKEN' }}"
+      - "systemd-resolved: {{ resolved_check.state }}"
+      - "Rough savings: ~80-200MB RAM, a few % CPU."

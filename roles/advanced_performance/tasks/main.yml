@@ -1,8 +1,9 @@
 ---
-# Advanced Performance Optimizations for AI Workloads in Docker on qcow2 VMs
+# Aggressive tuning for Docker AI workloads inside qcow2 VMs.
+# Several knobs here trade security for performance. See the README before deploying.
 
-# Security vs Performance Trade-offs
-- name: Disable speculative execution mitigations for performance
+# BPF / mitigations
+- name: BPF + speculative-execution settings
   sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
@@ -12,10 +13,10 @@
   loop:
     - { key: "kernel.unprivileged_bpf_disabled", value: "1" }
     - { key: "net.core.bpf_jit_enable", value: "1" }
-    - { key: "net.core.bpf_jit_harden", value: "0" }  # Disable JIT hardening for speed
+    - { key: "net.core.bpf_jit_harden", value: "0" }  # off for speed
   notify: sysctl reloaded
 
-- name: Configure GRUB for performance over security
+- name: Patch GRUB cmdline (mitigations off, mq-deadline, THP madvise, C1 max)
   lineinfile:
     path: /etc/default/grub
     regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
@@ -24,10 +25,10 @@
   register: grub_security_config
   notify: update grub
 
-# Huge Pages Configuration for Docker
-# Huge pages allocation disabled - uncomment if Docker workloads need it
+# Huge pages
+# Currently turned off. Uncomment the block below if a Docker workload needs them.
 
-- name: Disable huge pages allocation (set to 0)
+- name: Disable huge pages (set to 0)
   sysctl:
     name: vm.nr_hugepages
     value: "0"
@@ -46,7 +47,7 @@
     path: /mnt/hugepages
     state: absent
   ignore_errors: yes
-# - name: Calculate huge pages (reserve 25% of RAM for huge pages)
+# - name: Reserve 25% of RAM as huge pages
 #   shell: |
 #     total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
 #     hugepage_size_kb=$(grep Hugepagesize /proc/meminfo | awk '{print $2}')
@@ -87,8 +88,8 @@
     name: docker
     state: present
 
-# Low Latency Network Optimizations
-- name: Configure network for low latency
+# Network: BBR + TCP Fast Open + bigger buffers
+- name: TCP/network sysctls
   sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
@@ -96,29 +97,28 @@
     sysctl_file: /etc/sysctl.d/99-advanced-performance.conf
     reload: yes
   loop:
-    # TCP optimizations for low latency
-    - { key: "net.core.rmem_max", value: "134217728" }        # 128MB receive buffer
-    - { key: "net.core.wmem_max", value: "134217728" }        # 128MB send buffer
-    - { key: "net.core.netdev_max_backlog", value: "5000" }   # Increase queue
-    - { key: "net.core.netdev_budget", value: "600" }         # Process more packets per interrupt
+    - { key: "net.core.rmem_max", value: "134217728" }        # 128MB rx buffer
+    - { key: "net.core.wmem_max", value: "134217728" }        # 128MB tx buffer
+    - { key: "net.core.netdev_max_backlog", value: "5000" }
+    - { key: "net.core.netdev_budget", value: "600" }
     - { key: "net.ipv4.tcp_rmem", value: "4096 87380 134217728" }
     - { key: "net.ipv4.tcp_wmem", value: "4096 65536 134217728" }
-    - { key: "net.ipv4.tcp_congestion_control", value: "bbr" } # Better congestion control
-    - { key: "net.ipv4.tcp_fastopen", value: "3" }            # Enable TCP Fast Open
-    - { key: "net.ipv4.tcp_low_latency", value: "1" }         # Low latency mode
-    - { key: "net.ipv4.tcp_timestamps", value: "0" }          # Disable for lower overhead
-    - { key: "net.ipv4.tcp_sack", value: "1" }                # Selective ACK
-    - { key: "net.ipv4.tcp_window_scaling", value: "1" }      # Window scaling
-    - { key: "net.ipv4.tcp_no_metrics_save", value: "1" }     # Don't cache metrics
-    - { key: "net.ipv4.tcp_moderate_rcvbuf", value: "1" }     # Auto-tune receive buffer
+    - { key: "net.ipv4.tcp_congestion_control", value: "bbr" }
+    - { key: "net.ipv4.tcp_fastopen", value: "3" }
+    - { key: "net.ipv4.tcp_low_latency", value: "1" }
+    - { key: "net.ipv4.tcp_timestamps", value: "0" }          # off saves a few cycles
+    - { key: "net.ipv4.tcp_sack", value: "1" }
+    - { key: "net.ipv4.tcp_window_scaling", value: "1" }
+    - { key: "net.ipv4.tcp_no_metrics_save", value: "1" }
+    - { key: "net.ipv4.tcp_moderate_rcvbuf", value: "1" }
 
-# Careful Filesystem Optimizations for qcow2
+# Filesystem (qcow2-safe)
 - name: Get current mount options for root filesystem
   shell: mount | grep ' / ' | cut -d' ' -f6 | tr -d '()'
   register: current_mount_options
   changed_when: false
 
-- name: Add performance mount options to fstab (careful for qcow2)
+- name: Add noatime,commit=60 to root fs in fstab
   replace:
     path: /etc/fstab
     regexp: '(\S+\s+/\s+\S+\s+)(\S+)(\s+.*)'
@@ -127,20 +127,20 @@
   when: "'noatime' not in current_mount_options.stdout"
   notify: remount root
 
-- name: Configure I/O scheduler tunables for better qcow2 performance
+- name: Tune mq-deadline for qcow2
   shell: |
     for disk in /sys/block/*/queue; do
       if [ -f "$disk/scheduler" ] && [ -f "$disk/read_ahead_kb" ]; then
-        echo 128 > "$disk/read_ahead_kb"          # Increase read-ahead for qcow2
-        echo 1 > "$disk/iosched/fifo_batch"       # Better for VMs
-        echo 250 > "$disk/iosched/read_expire"    # Reduce read latency
-        echo 5000 > "$disk/iosched/write_expire"  # Allow more write batching
+        echo 128 > "$disk/read_ahead_kb"          # bigger read-ahead helps qcow2
+        echo 1 > "$disk/iosched/fifo_batch"
+        echo 250 > "$disk/iosched/read_expire"    # ms
+        echo 5000 > "$disk/iosched/write_expire"  # ms — lets writes batch
       fi
     done
   register: io_tuning_result
   changed_when: false
 
-# CPU C-State Optimizations (while keeping ondemand governor)
+# CPU C-states (governor stays at ondemand)
 - name: Check available CPU C-states
   shell: |
     if [ -d /sys/devices/system/cpu/cpu0/cpuidle ]; then
@@ -151,12 +151,12 @@
   register: cstate_check
   changed_when: false
 
-- name: Disable deep C-states for consistent performance (keep C0, C1 only)
+- name: Disable C-states deeper than C1
   shell: |
     for cpu in /sys/devices/system/cpu/cpu*/cpuidle/state*; do
       if [ -f "$cpu/disable" ]; then
         state_name=$(cat "$cpu/name" 2>/dev/null || echo "unknown")
-        # Disable states deeper than C1 for consistent performance
+        # anything C2+ adds wakeup latency we don't want
         if [[ "$state_name" =~ (C[2-9]|C[0-9][0-9]) ]]; then
           echo 1 > "$cpu/disable"
         fi
@@ -166,8 +166,8 @@
   register: cstate_result
   changed_when: false
 
-# Docker-specific optimizations
-- name: Configure Docker daemon for performance
+# Docker
+- name: Write /etc/docker/daemon.json
   copy:
     content: |
       {
@@ -186,16 +186,14 @@
     backup: yes
   notify: restart docker
 
-- name: Display advanced performance optimization status
+- name: Show what got set
   debug:
     msg:
-      - "Advanced Performance optimizations applied:"
-      - "- Security mitigations: disabled (mitigations=off)"
-      - "- Audit logging: disabled (audit=0)"
-      - "- Huge pages: disabled (set to 0)"
-      - "- Network: optimized for low latency (BBR, TCP Fast Open)"
-      - "- Filesystem: noatime, commit=60 (qcow2-safe)"
-      - "- CPU C-states: limited to C0/C1 (consistent performance)"
-      - "- Docker: configured for performance"
-      - "- I/O scheduler: tuned for VM workloads"
-      - "Note: Reboot required for full optimization"
+      - "CPU mitigations: off"
+      - "audit: off"
+      - "huge pages: 0"
+      - "TCP: BBR, Fast Open on, big buffers"
+      - "root fs: noatime, commit=60"
+      - "C-states: capped at C1"
+      - "Docker daemon.json: written"
+      - "Reboot to pick up GRUB cmdline changes."

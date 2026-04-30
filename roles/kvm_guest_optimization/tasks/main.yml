@@ -1,5 +1,5 @@
 ---
-# Install and configure QEMU guest agent for better KVM integration
+# qemu-guest-agent: lets the host talk to the guest (graceful shutdown, freeze/thaw, etc.)
 - name: Install qemu-guest-agent
   apt:
     name: qemu-guest-agent
@@ -13,7 +13,7 @@
     enabled: yes
     state: started
 
-# Install and configure tuned for VM performance optimization
+# tuned, with the virtual-guest profile applied below
 - name: Install tuned
   apt:
     name: tuned
@@ -32,7 +32,7 @@
   register: tuned_result
   changed_when: "'Switching to profile' in tuned_result.stdout"
 
-# Install and configure OpenSSH server
+# SSH (root login + password auth on — see README's security notes)
 - name: Install OpenSSH server
   apt:
     name: openssh-server
@@ -69,10 +69,9 @@
     proto: tcp
   ignore_errors: yes
 
-- name: Display KVM guest optimization status
+- name: Show what got set
   debug:
-    msg: 
-      - "KVM Guest optimizations applied:"
-      - "- QEMU Guest Agent: Active"
-      - "- Tuned Profile: virtual-guest"
-      - "- SSH Server: Enabled with root login and password auth"
+    msg:
+      - "qemu-guest-agent: running"
+      - "tuned profile: virtual-guest"
+      - "SSH: root login + password auth on"

@@ -1,59 +1,48 @@
 #!/bin/bash
 
-# Script to prepare Linux Mint system for Ansible-Pull GitOps
-# Creates ansible user with passwordless sudo and installs required packages
+# Bootstrap script for ansible-pull GitOps on Linux Mint.
+# Creates the `ansible` user with passwordless sudo, installs ansible+git,
+# then writes the systemd service + timer that pull this repo on a schedule.
 
 set -e
 
-echo "=== Linux Mint Ansible-Pull Setup ==="
+echo "=== Linux Mint ansible-pull setup ==="
 
-# Update system
-echo "Updating system packages..."
+echo "apt update + upgrade..."
 apt update && apt upgrade -y
 
-# Install required packages
-echo "Installing required packages..."
+echo "Installing ansible, git, python3 deps..."
 apt install -y ansible git python3-pip python3-apt python3-setuptools sudo
 
-# Create ansible user if it doesn't exist
 if ! id "ansible" &>/dev/null; then
     echo "Creating ansible user..."
     useradd -m -s /bin/bash ansible
-    echo "ansible user created successfully"
 else
-    echo "ansible user already exists"
+    echo "ansible user already exists, leaving it alone"
 fi
 
-# Add ansible user to sudo group
-echo "Adding ansible user to sudo group..."
+echo "Adding ansible to the sudo group..."
 usermod -aG sudo ansible
 
-# Configure passwordless sudo for ansible user
-echo "Configuring passwordless sudo for ansible user..."
+echo "Granting passwordless sudo..."
 echo "ansible ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/ansible
 chmod 440 /etc/sudoers.d/ansible
 
-# Create working directory for ansible user
-echo "Setting up working directory for ansible user..."
 mkdir -p /home/ansible
 chown ansible:ansible /home/ansible
 
-# Create ansible configuration directory
-echo "Creating ansible configuration directory..."
 mkdir -p /home/ansible/.ansible
 chown ansible:ansible /home/ansible/.ansible
 
-# Prompt for GitHub repository URL
-echo "=== Systemd Service Setup ==="
-read -p "Enter your GitHub repository URL (e.g., https://github.com/username/linux-mint-optimizer.git): " REPO_URL
+echo "=== systemd service ==="
+read -p "Repo URL (e.g. https://github.com/username/linux-mint-optimizer.git): " REPO_URL
 
 if [ -z "$REPO_URL" ]; then
-    echo "Error: Repository URL cannot be empty"
+    echo "No URL given. Aborting."
     exit 1
 fi
 
-# Create systemd service file
-echo "Creating ansible-pull systemd service..."
+echo "Writing /etc/systemd/system/ansible-pull.service..."
 cat > /etc/systemd/system/ansible-pull.service << EOF
 [Unit]
 Description=Ansible Pull GitOps for Linux Mint Optimization
@@ -73,8 +62,7 @@ PrivateTmp=yes
 WantedBy=multi-user.target
 EOF
 
-# Create systemd timer file
-echo "Creating ansible-pull systemd timer..."
+echo "Writing /etc/systemd/system/ansible-pull.timer..."
 cat > /etc/systemd/system/ansible-pull.timer << EOF
 [Unit]
 Description=Run Ansible Pull every 15 minutes
@@ -89,17 +77,16 @@ RandomizedDelaySec=2min
 WantedBy=timers.target
 EOF
 
-# Reload systemd and enable the timer
-echo "Enabling and starting ansible-pull timer..."
+echo "Enabling the timer..."
 systemctl daemon-reload
 systemctl enable ansible-pull.timer
 systemctl start ansible-pull.timer
 
-echo "=== Setup completed successfully ==="
-echo "Repository URL: $REPO_URL"
-echo ""
-echo "Next steps:"
-echo "1. Test ansible-pull manually: sudo -u ansible ansible-pull -U $REPO_URL -i inventory/hosts.yml site.yml"
-echo "2. Check timer status: systemctl status ansible-pull.timer"
-echo "3. Check service logs: journalctl -u ansible-pull.service"
-echo "4. Monitor next automatic run: journalctl -f -u ansible-pull.service"
+echo "=== Done ==="
+echo "Repo: $REPO_URL"
+echo
+echo "To check things:"
+echo "  Manual run:    sudo -u ansible ansible-pull -U $REPO_URL -i inventory/hosts.yml site.yml"
+echo "  Timer status:  systemctl status ansible-pull.timer"
+echo "  Last run logs: journalctl -u ansible-pull.service"
+echo "  Follow logs:   journalctl -f -u ansible-pull.service"
