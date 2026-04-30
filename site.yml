@@ -1,9 +1,9 @@
 ---
 - name: Linux Mint System Optimization
   hosts: all
-  become: yes
-  gather_facts: yes
-  
+  become: true
+  gather_facts: true
+
   roles:
     - system_optimization
     - xrdp_setup

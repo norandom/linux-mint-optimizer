@@ -4,7 +4,7 @@
 
 # BPF / mitigations
 - name: BPF + speculative-execution settings
-  sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     state: present
@@ -29,7 +29,7 @@
 # Currently turned off. Uncomment the block below if a Docker workload needs them.
 
 - name: Disable huge pages (set to 0)
-  sysctl:
+  ansible.posix.sysctl:
     name: vm.nr_hugepages
     value: "0"
     state: present
@@ -37,16 +37,14 @@
     reload: yes
 
 - name: Unmount hugepages filesystem if mounted
-  mount:
+  ansible.posix.mount:
     path: /mnt/hugepages
     state: unmounted
-  ignore_errors: yes
 
 - name: Remove hugepages mount point
   file:
     path: /mnt/hugepages
     state: absent
-  ignore_errors: yes
 # - name: Reserve 25% of RAM as huge pages
 #   shell: |
 #     total_mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
@@ -90,7 +88,7 @@
 
 # Network: BBR + TCP Fast Open + bigger buffers
 - name: TCP/network sysctls
-  sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     state: present
@@ -113,10 +111,9 @@
     - { key: "net.ipv4.tcp_moderate_rcvbuf", value: "1" }
 
 # Filesystem (qcow2-safe)
-- name: Get current mount options for root filesystem
-  shell: mount | grep ' / ' | cut -d' ' -f6 | tr -d '()'
-  register: current_mount_options
-  changed_when: false
+- name: Look up current root fs mount options
+  set_fact:
+    root_mount_options: "{{ (ansible_facts.mounts | selectattr('mount', 'equalto', '/') | list | first).options }}"
 
 - name: Add noatime,commit=60 to root fs in fstab
   replace:
@@ -124,7 +121,7 @@
     regexp: '(\S+\s+/\s+\S+\s+)(\S+)(\s+.*)'
     replace: '\1\2,noatime,commit=60\3'
     backup: yes
-  when: "'noatime' not in current_mount_options.stdout"
+  when: "'noatime' not in root_mount_options"
   notify: remount root
 
 - name: Tune mq-deadline for qcow2
@@ -134,7 +131,7 @@
         echo 128 > "$disk/read_ahead_kb"          # bigger read-ahead helps qcow2
         echo 1 > "$disk/iosched/fifo_batch"
         echo 250 > "$disk/iosched/read_expire"    # ms
-        echo 5000 > "$disk/iosched/write_expire"  # ms — lets writes batch
+        echo 5000 > "$disk/iosched/write_expire"  # ms - lets writes batch
       fi
     done
   register: io_tuning_result
@@ -152,16 +149,19 @@
   changed_when: false
 
 - name: Disable C-states deeper than C1
-  shell: |
-    for cpu in /sys/devices/system/cpu/cpu*/cpuidle/state*; do
-      if [ -f "$cpu/disable" ]; then
-        state_name=$(cat "$cpu/name" 2>/dev/null || echo "unknown")
-        # anything C2+ adds wakeup latency we don't want
-        if [[ "$state_name" =~ (C[2-9]|C[0-9][0-9]) ]]; then
-          echo 1 > "$cpu/disable"
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      for cpu in /sys/devices/system/cpu/cpu*/cpuidle/state*; do
+        if [ -f "$cpu/disable" ]; then
+          state_name=$(cat "$cpu/name" 2>/dev/null || echo "unknown")
+          # anything C2+ adds wakeup latency we don't want
+          case "$state_name" in
+            C[2-9]|C[1-9][0-9]) echo 1 > "$cpu/disable" ;;
+          esac
         fi
-      fi
-    done
+      done
+    executable: /bin/bash
   when: cstate_check.stdout != "no_cpuidle"
   register: cstate_result
   changed_when: false
@@ -183,6 +183,7 @@
         "default-shm-size": "1g"
       }
     dest: /etc/docker/daemon.json
+    mode: '0644'
     backup: yes
   notify: restart docker
 

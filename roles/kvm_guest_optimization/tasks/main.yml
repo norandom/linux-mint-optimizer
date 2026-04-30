@@ -62,12 +62,18 @@
     enabled: yes
     state: started
 
-- name: Configure firewall for SSH (if ufw is active)
-  ufw:
+- name: Check whether ufw is installed
+  ansible.builtin.command: which ufw
+  register: ufw_check
+  changed_when: false
+  failed_when: false
+
+- name: Configure firewall for SSH (if ufw is installed)
+  community.general.ufw:
     rule: allow
     port: '22'
     proto: tcp
-  ignore_errors: yes
+  when: ufw_check.rc == 0
 
 - name: Show what got set
   debug:

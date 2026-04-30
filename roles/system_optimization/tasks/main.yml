@@ -34,20 +34,20 @@
   notify: restart systemd-coredump
 
 - name: Clean existing journal files to apply new limits
-  shell: journalctl --vacuum-size=500M
+  command: journalctl --vacuum-size=500M
   changed_when: false
 
 - name: Clean existing coredump files to apply new limits
-  shell: |
-    set -o pipefail
-    find /var/lib/systemd/coredump -type f \( -name "*.zst" -o -name "core.*" \) | head -n -10 | xargs -r rm -f
-  args:
+  ansible.builtin.shell:
+    cmd: |
+      set -o pipefail
+      find /var/lib/systemd/coredump -type f \( -name "*.zst" -o -name "core.*" \) | head -n -10 | xargs -r rm -f
     executable: /bin/bash
   changed_when: false
   failed_when: false
 
 - name: Get current journal disk usage
-  shell: journalctl --disk-usage
+  command: journalctl --disk-usage
   register: journal_usage
   changed_when: false
 

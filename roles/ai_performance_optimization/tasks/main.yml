@@ -40,7 +40,7 @@
 
 # Memory + swap
 - name: Configure kernel parameters for AI workloads
-  sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     state: present

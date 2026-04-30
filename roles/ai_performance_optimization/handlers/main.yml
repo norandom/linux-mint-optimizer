@@ -1,4 +1,5 @@
 ---
-- name: update grub
+- name: Update grub
   command: update-grub
   when: grub_config is changed or grub_config_thp is changed or grub_config_final is changed
+  changed_when: true
