@@ -38,6 +38,18 @@
     mode: '0644'
     backup: yes
 
+# Remove a stale tunable left in the sysctl file by older versions of this role.
+# kernel.sched_migration_cost_ns needs CONFIG_SCHED_DEBUG and is absent on stock
+# Mint/Ubuntu 6.8 kernels. If it lingers in 99-ai-performance.conf, every
+# `sysctl -p` reload below fails ("cannot stat .../sched_migration_cost_ns") and
+# aborts the whole play. It is no longer managed, so ensure it's gone first.
+- name: Drop stale kernel.sched_migration_cost_ns from the AI sysctl file
+  ansible.posix.sysctl:
+    name: kernel.sched_migration_cost_ns
+    sysctl_file: /etc/sysctl.d/99-ai-performance.conf
+    state: absent
+    reload: false
+
 # Memory + swap
 - name: Configure kernel parameters for AI workloads
   ansible.posix.sysctl:
