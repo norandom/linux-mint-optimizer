@@ -54,15 +54,18 @@
 
 - name: Kill leftover desktop processes
   ansible.builtin.shell:
+    # The [x]-bracket trick stops `pkill -f` from matching this script's own
+    # command line (which lists these patterns) and SIGTERM-ing the shell that
+    # runs it (rc -15). Real target processes still match.
     cmd: |
       set -o pipefail
-      pkill -f speech-dispatcher || true
-      pkill -f evolution-alarm-notify || true
-      pkill -f evolution-source-registry || true
-      pkill -f evolution-calendar-factory || true
-      pkill -f evolution-addressbook-factory || true
-      pkill -f at-spi-bus-launcher || true
-      pkill -f blueman-applet || true
+      pkill -f '[s]peech-dispatcher' || true
+      pkill -f '[e]volution-alarm-notify' || true
+      pkill -f '[e]volution-source-registry' || true
+      pkill -f '[e]volution-calendar-factory' || true
+      pkill -f '[e]volution-addressbook-factory' || true
+      pkill -f '[a]t-spi-bus-launcher' || true
+      pkill -f '[b]lueman-applet' || true
     executable: /bin/bash
   changed_when: false
 
