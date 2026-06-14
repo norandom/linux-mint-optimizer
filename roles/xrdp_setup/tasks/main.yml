@@ -1,19 +1,77 @@
 ---
-- name: Check if xrdp is already installed
-  command: dpkg-query -W -f='${Status}' xrdp
-  register: xrdp_check
+# --- Install xrdp/xorgxrdp from the fleet apt repo (xrdp-fleet project) ------
+# The custom build carries RemoteFX + H.264; the pin makes it win over the
+# distro package. Hosts on a suite we don't build fall back to stock xrdp.
+- name: Determine fleet apt suite for this host
+  ansible.builtin.shell: . /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}"
+  register: fleet_suite_cmd
   changed_when: false
-  failed_when: false
+  check_mode: false
 
-- name: Install xrdp and dependencies
-  apt:
-    name:
-      - xrdp
-      - xorgxrdp
-    state: present
-    update_cache: yes
-    cache_valid_time: 86400  # skip apt update if cache is < 24h old
-  when: xrdp_check.stdout != "install ok installed"
+- name: Set fleet suite fact
+  ansible.builtin.set_fact:
+    fleet_suite: "{{ fleet_suite_cmd.stdout | trim }}"
+
+- name: Install xrdp from the fleet repo (custom RemoteFX + H.264 build)
+  when: fleet_suite in fleet_supported_suites
+  block:
+    - name: Create apt keyrings directory
+      ansible.builtin.file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Install fleet repo signing key
+      ansible.builtin.copy:
+        src: fleet-xrdp.gpg
+        dest: /etc/apt/keyrings/fleet-xrdp.gpg
+        mode: '0644'
+
+    - name: Add fleet apt source (deb822, per-suite)
+      ansible.builtin.template:
+        src: fleet-xrdp.sources.j2
+        dest: /etc/apt/sources.list.d/fleet-xrdp.sources
+        mode: '0644'
+
+    - name: Pin the fleet repo above the distro package
+      ansible.builtin.copy:
+        src: 90-fleet-xrdp.pref
+        dest: /etc/apt/preferences.d/90-fleet-xrdp
+        mode: '0644'
+
+    - name: Install xrdp + xorgxrdp from the fleet repo
+      ansible.builtin.apt:
+        name:
+          - xrdp
+          - xorgxrdp
+        state: latest
+        update_cache: true
+        install_recommends: false
+      notify:
+        - restart xrdp
+        - restart xrdp-sesman
+
+- name: Fall back to stock xrdp (suite not built by the fleet repo)
+  when: fleet_suite not in fleet_supported_suites
+  block:
+    - name: Warn that the fleet repo has no build for this suite
+      ansible.builtin.debug:
+        msg: >-
+          No fleet xrdp build for suite '{{ fleet_suite }}'; installing distro
+          stock xrdp. Add a build target in xrdp-fleet to get the custom build.
+
+    - name: Install distro xrdp + xorgxrdp
+      ansible.builtin.apt:
+        name:
+          - xrdp
+          - xorgxrdp
+        state: present
+        update_cache: true
+        cache_valid_time: 86400
+        install_recommends: false
+      notify:
+        - restart xrdp
+        - restart xrdp-sesman
 
 - name: Add xrdp user to ssl-cert group
   user:
@@ -31,6 +89,14 @@
   copy:
     src: xrdp.ini
     dest: /etc/xrdp/xrdp.ini
+    backup: yes
+    mode: '0644'
+  notify: restart xrdp
+
+- name: Copy xrdp GFX codec configuration (RFX-lean)
+  copy:
+    src: gfx.toml
+    dest: /etc/xrdp/gfx.toml
     backup: yes
     mode: '0644'
   notify: restart xrdp

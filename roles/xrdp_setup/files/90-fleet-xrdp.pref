@@ -1,0 +1,6 @@
+# Managed by linux-mint-optimizer (xrdp_setup role) — do not edit on the host.
+# Make the fleet repo authoritative for its packages (xrdp, xorgxrdp) over the
+# distro, allow a downgrade if ever needed, and keep auto-updates from our repo.
+Package: *
+Pin: release o=fleet-xrdp,l=fleet-xrdp
+Pin-Priority: 1001

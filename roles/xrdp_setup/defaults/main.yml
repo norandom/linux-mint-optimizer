@@ -1,0 +1,16 @@
+---
+# Fleet xrdp apt repo (built & published by the xrdp-fleet project:
+# https://github.com/norandom/xrdp-fleet). The xrdp_setup role installs the
+# custom xrdp/xorgxrdp build (RemoteFX + H.264) from here instead of the stock
+# distro package.
+fleet_pages_url: "https://norandom.github.io/xrdp-fleet"
+fleet_repo_origin: "fleet-xrdp"
+fleet_repo_label: "fleet-xrdp"
+
+# Codenames the fleet repo publishes a suite for. A host whose Ubuntu base
+# (UBUNTU_CODENAME) or Kali codename (VERSION_CODENAME) is not listed falls
+# back to the distro's stock xrdp so its run never fails.
+fleet_supported_suites:
+  - noble          # Ubuntu 24.04 / Linux Mint 22.x
+  - jammy          # Ubuntu 22.04 / Linux Mint 21.x
+  - kali-rolling   # Kali

@@ -1,0 +1,74 @@
+# Managed by linux-mint-optimizer (xrdp_setup role).
+#
+# RFX-lean: the GFX graphics pipeline is restricted to RemoteFX only (H.264 is
+# removed from `order`) to minimise bandwidth on desktop sessions.
+#
+# NOTE: with max_bpp=24 in xrdp.ini the GFX pipeline is not negotiated at all
+# (sessions use legacy RemoteFX), so this file is mostly a guard: if max_bpp is
+# ever raised to 32, this keeps sessions off H.264. To deliberately enable
+# H.264, set  order = [ "H.264", "RFX" ]  AND max_bpp=32 in xrdp.ini — the
+# [x264.*] bitrate ceilings below are already capped so it won't run uncapped.
+
+[codec]
+order = [ "RFX" ]
+h264_encoder = "x264"
+
+# --- x264 (software H.264) profiles — pre-capped (used only if H.264 enabled) -
+[x264.default]
+preset = "ultrafast"
+tune = "zerolatency"
+profile = "main"
+vbv_max_bitrate = 2000   # kbps ceiling (upstream default is 0 = UNLIMITED)
+vbv_buffer_size = 200
+fps_num = 30             # upstream default is 60
+fps_den = 1
+threads = 1
+
+[x264.lan]
+vbv_max_bitrate = 2000
+vbv_buffer_size = 200
+
+[x264.wan]
+vbv_max_bitrate = 1600
+vbv_buffer_size = 160
+
+[x264.broadband_high]
+preset = "superfast"
+vbv_max_bitrate = 1600
+vbv_buffer_size = 160
+
+[x264.satellite]
+preset = "superfast"
+vbv_max_bitrate = 1200
+vbv_buffer_size = 120
+
+[x264.broadband_low]
+preset = "veryfast"
+vbv_max_bitrate = 1200
+vbv_buffer_size = 100
+
+[x264.modem]
+preset = "fast"
+vbv_max_bitrate = 800
+vbv_buffer_size = 50
+
+# --- OpenH264 profiles — pre-capped (used only if h264_encoder = "OpenH264") --
+[OpenH264.default]
+EnableFrameSkip = true
+TargetBitrate = 2000000
+MaxBitrate = 2500000
+MaxFrameRate = 30.0
+
+[OpenH264.wan]
+TargetBitrate = 1600000
+MaxBitrate = 2000000
+
+[OpenH264.broadband_low]
+EnableFrameSkip = true
+TargetBitrate = 1200000
+MaxBitrate = 1500000
+
+[OpenH264.modem]
+EnableFrameSkip = true
+TargetBitrate = 600000
+MaxBitrate = 1000000
