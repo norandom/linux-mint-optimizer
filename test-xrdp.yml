@@ -14,9 +14,14 @@
       loop:
         - "roles/xrdp_setup/tasks/main.yml"
         - "roles/xrdp_setup/handlers/main.yml"
+        - "roles/xrdp_setup/defaults/main.yml"
         - "roles/xrdp_setup/files/xrdp.ini"
         - "roles/xrdp_setup/files/sesman.ini"
         - "roles/xrdp_setup/files/startwm.sh"
+        - "roles/xrdp_setup/files/gfx.toml"
+        - "roles/xrdp_setup/files/fleet-xrdp.gpg"
+        - "roles/xrdp_setup/files/90-fleet-xrdp.pref"
+        - "roles/xrdp_setup/templates/fleet-xrdp.sources.j2"
       register: file_check
 
     - name: Report which files exist
