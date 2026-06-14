@@ -70,8 +70,10 @@
   changed_when: false
 
 # Sanity check: did we accidentally break DNS?
+# Use getent (glibc NSS — always present, resolves via DNS) instead of nslookup,
+# which lives in bind9-dnsutils and isn't installed on a lean Mint/Ubuntu.
 - name: Test DNS resolution after service optimization
-  command: nslookup google.com
+  command: getent hosts google.com
   register: dns_test
   changed_when: false
   failed_when: dns_test.rc != 0
