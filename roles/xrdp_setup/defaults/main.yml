@@ -14,3 +14,17 @@ fleet_supported_suites:
   - noble          # Ubuntu 24.04 / Linux Mint 22.x
   - jammy          # Ubuntu 22.04 / Linux Mint 21.x
   - kali-rolling   # Kali
+
+# --- xrdp colour depth / codec selection ------------------------------------
+# Colour depth picks the codec path; the role rewrites both [Globals] max_bpp
+# lines in xrdp.ini from this. H.264 stays disabled in all modes (gfx.toml
+# `order` has no "H.264"). Allowed: 16, 24, 32.
+#   16 -> RFX off, lossless RGB bitmap/planar codec. Crisp text, NO chroma hue,
+#         lowest bandwidth on flat terminal/UI content (RLE + bitmap/glyph/order
+#         caches). Cost: mild colour banding on photos/gradients. BEST for
+#         terminal+browser (measured 2026-06-14).
+#   24 -> legacy RemoteFX classic (lossy YCbCr 4:2:0): good general compression
+#         but chroma bleed/hue around coloured text, and spikes on heavy motion.
+#   32 -> GFX RemoteFX Progressive: lossy wavelet; text stays persistently soft
+#         on a static screen (refinement is diff-gated). Avoid for text work.
+xrdp_max_bpp: 24

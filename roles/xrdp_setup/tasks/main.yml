@@ -93,6 +93,23 @@
     mode: '0644'
   notify: restart xrdp
 
+# Colour depth selects the codec: 16 = lossless RGB bitmap/planar (crisp text,
+# no chroma hue, best for terminal+browser), 24 = RemoteFX classic, 32 = GFX
+# RemoteFX Progressive. gfx.toml order=["RFX"] keeps H.264 off at 24/32.
+- name: Validate xrdp_max_bpp
+  ansible.builtin.assert:
+    that:
+      - (xrdp_max_bpp | int) in [16, 24, 32]
+    fail_msg: "xrdp_max_bpp must be 16, 24, or 32 (got '{{ xrdp_max_bpp }}')"
+    quiet: true
+
+- name: Set xrdp colour depth / codec path (xrdp_max_bpp)
+  ansible.builtin.replace:
+    path: /etc/xrdp/xrdp.ini
+    regexp: '^max_bpp=.*$'
+    replace: "max_bpp={{ xrdp_max_bpp | int }}"
+  notify: restart xrdp
+
 - name: Copy xrdp GFX codec configuration (RFX-lean)
   copy:
     src: gfx.toml
